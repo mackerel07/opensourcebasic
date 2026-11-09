@@ -47,10 +47,10 @@ npm run dev
 
 | 종류 | 용도 | 예시 |
 |---|---|---|
-| feat | 새 화면이나 기능 | feat/3-item-list |
-| fix | 버그 수정 | fix/4-photo-preview |
-| docs | 문서 | docs/8-git-guide |
-| chore | 도구·설정 정리 | chore/2-front-setup |
+| feat | 새 화면이나 기능 | feat/14-item-list |
+| fix | 버그 수정 | fix/15-photo-preview |
+| docs | 문서 | docs/14-local-setup |
+| chore | 도구·설정 정리 | chore/14-front-setup |
 
 예시 번호는 설명용이다. 실제 맡은 이슈 번호로 바꾼다.
 
@@ -59,7 +59,7 @@ npm run dev
 ```bash
 git switch main
 git pull --ff-only origin main
-git switch -c feat/3-item-list
+git switch -c feat/14-item-list
 ```
 
 `main`에는 직접 작업하지 않는다. 처음 비어 있던 저장소에 협업 문서를 만드는 초기 커밋만 예외이며, 기능 개발은 PR을 사용한다.
@@ -69,11 +69,11 @@ git switch -c feat/3-item-list
 형식은 `종류(영역): 변경 내용 (#이슈번호)`다. 설명은 자연스러운 한국어로 작성한다.
 
 ```text
-feat(frontend): 물품 목록 화면 추가 (#3)
-fix(frontend): 사진 변경 시 미리보기 초기화 (#4)
-docs(team): 로컬 실행 방법 정리 (#2)
-test(frontend): 수량 입력 검증 추가 (#3)
-chore(frontend): 린트와 타입 검사 명령 추가 (#2)
+feat(frontend): 물품 목록 화면 추가 (#14)
+fix(frontend): 사진 변경 시 미리보기 초기화 (#15)
+docs(team): 로컬 실행 방법 정리 (#14)
+test(frontend): 수량 입력 검증 추가 (#14)
+chore(frontend): 개발 환경 설정 (#14)
 ```
 
 - feat: 기능 추가
@@ -95,8 +95,8 @@ git status
 git diff
 git add frontend/src/features/items
 git diff --cached
-git commit -m "feat(frontend): 물품 목록 화면 추가 (#3)"
-git push -u origin feat/3-item-list
+git commit -m "feat(frontend): 물품 목록 화면 추가 (#14)"
+git push -u origin feat/14-item-list
 ```
 
 익숙하지 않을 때는 `git add .` 대신 필요한 파일만 지정해 추가한다. `git diff --cached`로 비밀값이나 다른 팀원의 변경이 섞이지 않았는지 확인한다.
@@ -107,22 +107,10 @@ git push -u origin feat/3-item-list
 
 GitHub의 Compare & pull request에서 대상 브랜치를 `main`으로 선택한다. 진행 중이면 Draft PR로 올려도 된다.
 
-- 제목: 커밋과 같은 형식. 예: `feat(frontend): 물품 목록 화면 추가 (#3)`
-- 본문: 무엇을 바꿨는지, 확인 방법, 스크린샷, 남은 문제를 적는다.
-- 이슈 전체가 완료되었을 때만 `Closes #3`을 적는다. 일부 작업이면 `Refs #3`을 사용한다.
-- 화면 작업은 PC와 모바일 크기의 스크린샷을 각각 첨부한다.
-- 실행하지 않은 테스트는 통과했다고 적지 않는다.
-- 병합 전 다른 팀원 한 명이 변경과 실제 화면을 확인한다.
-- 작성자가 리뷰 요청 후 팀에서 정한 병합 담당자가 Squash and merge한다. Draft PR은 준비가 끝나면 Ready for review로 바꾼다.
-
-초기 세팅 이슈에서 아래 명령을 제공한 뒤, 기능 PR은 `frontend/`에서 실행 결과를 기록한다.
-
-```bash
-npm run lint
-npm run typecheck
-npm run test
-npm run build
-```
+- 제목: 커밋과 같은 형식. 예: `feat(frontend): 물품 목록 화면 추가 (#14)`
+- 무엇을 바꿨는지와 이슈의 기본 동작을 어떻게 확인했는지 적는다. 필요하면 스크린샷을 첨부한다.
+- 이슈 전체가 끝났으면 `Closes #14`, 일부만 작업했다면 `Refs #14`를 사용한다.
+- 기능 PR은 다른 팀원 한 명이 변경과 기본 동작을 확인한 뒤 팀에서 정한 담당자가 Squash and merge한다.
 
 `npm ci`는 커밋된 lockfile에 맞춰 설치한다. 패키지 추가가 필요할 때만 `npm install 패키지명`을 사용하고 package.json과 lockfile을 함께 커밋한다. npm 외의 lockfile을 혼용하지 않는다.
 
@@ -140,7 +128,7 @@ npm run build
 ```bash
 git switch main
 git pull --ff-only origin main
-git branch -d feat/3-item-list
+git branch -d feat/14-item-list
 ```
 
 이 규칙은 협업 절차다. GitHub의 브랜치 보호나 자동 배포 설정을 변경했다는 뜻은 아니다.
