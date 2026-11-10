@@ -1,0 +1,16 @@
+{
+  "points_per_side": 16,
+  "points_per_batch": 16,
+  "pred_iou_thresh": 0.8,
+  "stability_score_thresh": 0.95,
+  "box_nms_thresh": 0.7,
+  "min_area_ratio": 0.001,
+  "max_area_ratio": 0.8,
+  "mask_iou_suppress": 0.6,
+  "max_candidates": 64,
+  "max_image_edge": 1024,
+  "feature_batch_size": 8,
+  "class_score_min": 0.7,
+  "class_margin_min": 0.15,
+  "expected": {"calculator": 1, "scissors": 1, "mouse": 1}
+}
