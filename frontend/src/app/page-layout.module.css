@@ -1,0 +1,12 @@
+.page {
+  padding: 24px 0 48px;
+}
+
+.head {
+  margin-bottom: 20px;
+}
+
+.head h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
