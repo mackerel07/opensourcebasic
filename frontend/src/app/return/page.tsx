@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { ReturnFlow } from "@/features/return/ReturnFlow";
 import styles from "../page-layout.module.css";
 
 export const metadata: Metadata = {
@@ -12,12 +12,11 @@ export default function ReturnPage() {
       <header className={styles.head}>
         <h1>반납 확인</h1>
         <p className="hint">
-          사진 촬영과 결과 확인 화면은 다음 작업(#15)에서 만듭니다.
+          화면 확인용 샘플입니다. 사진은 이 기기에서만 보이고 서버로 보내지
+          않습니다.
         </p>
       </header>
-      <Link href="/items" className="btn">
-        물품 관리로 이동
-      </Link>
+      <ReturnFlow />
     </div>
   );
 }
