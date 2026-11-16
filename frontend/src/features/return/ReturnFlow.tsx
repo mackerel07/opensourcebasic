@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useItems } from "@/features/items/itemStore";
+import { decodePhoto, type Photo } from "./loadPhoto";
+import { PhotoFrame } from "./PhotoFrame";
 import { QuantityStepper } from "./QuantityStepper";
 import { ResultPhoto } from "./ResultPhoto";
 import {
@@ -15,7 +17,6 @@ import {
 import styles from "./ReturnFlow.module.css";
 
 type Step = "select" | "photo" | "analyzing" | "error" | "result" | "done";
-type Photo = { url: string; name: string };
 
 const SAMPLE_LABEL = "샘플 결과 · 실제 AI 분석 아님";
 
@@ -32,11 +33,14 @@ export function ReturnFlow() {
   const [selected, setSelected] = useState<Record<string, number>>({});
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [checkingPhoto, setCheckingPhoto] = useState(false);
   const [simulateFailure, setSimulateFailure] = useState(false);
   const [result, setResult] = useState<SampleResult | null>(null);
   const [confirmed, setConfirmed] = useState<Record<string, number>>({});
   const headingRef = useRef<HTMLHeadingElement>(null);
   const photoUrlRef = useRef<string | null>(null);
+  /** 사진을 연달아 고를 때, 마지막으로 고른 사진의 확인 결과만 반영하기 위한 번호 */
+  const photoLoadRef = useRef(0);
 
   const requests: ReturnRequest[] = items
     .filter((item) => (selected[item.id] ?? 0) > 0)
@@ -86,7 +90,17 @@ export function ReturnFlow() {
     setSelected((prev) => ({ ...prev, [itemId]: value }));
   }
 
-  function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
+  function clearPhoto() {
+    if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
+    photoUrlRef.current = null;
+    setPhoto(null);
+  }
+
+  /**
+   * 고른 사진을 실제로 열어 본 뒤에만 사용한다.
+   * 열지 못하면(손상된 파일 등) 사진을 비우고 다시 고르라고 안내한다.
+   */
+  async function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -94,17 +108,37 @@ export function ReturnFlow() {
       setPhotoError("사진 파일만 선택할 수 있어요.");
       return;
     }
-    if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
-    const url = URL.createObjectURL(file);
-    photoUrlRef.current = url;
-    setPhoto({ url, name: file.name });
+
+    const loadId = ++photoLoadRef.current;
+    clearPhoto();
     setPhotoError(null);
+    setCheckingPhoto(true);
+
+    const url = URL.createObjectURL(file);
+    try {
+      const size = await decodePhoto(url);
+      if (loadId !== photoLoadRef.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      photoUrlRef.current = url;
+      setPhoto({ url, name: file.name, ...size });
+    } catch {
+      URL.revokeObjectURL(url);
+      if (loadId !== photoLoadRef.current) return;
+      setPhotoError(
+        "사진을 열 수 없어요. 파일이 손상됐을 수 있으니 다른 사진을 찍거나 선택해 주세요.",
+      );
+    } finally {
+      if (loadId === photoLoadRef.current) setCheckingPhoto(false);
+    }
   }
 
   function restart() {
-    if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
-    photoUrlRef.current = null;
-    setPhoto(null);
+    photoLoadRef.current += 1;
+    clearPhoto();
+    setCheckingPhoto(false);
+    setPhotoError(null);
     setSelected({});
     setResult(null);
     setConfirmed({});
@@ -213,23 +247,19 @@ export function ReturnFlow() {
           </p>
 
           {photo ? (
-            <div className={styles.previewWrap}>
-              {/* eslint-disable-next-line @next/next/no-img-element -- 브라우저에서 고른 사진 미리보기 */}
-              <img
-                src={photo.url}
-                alt="선택한 반납 사진 미리보기"
-                className={styles.preview}
-              />
+            <PhotoFrame photo={photo} alt="선택한 반납 사진 미리보기">
               {step === "analyzing" && (
                 <div className={styles.analyzing} role="status">
                   <span className={styles.spinner} aria-hidden="true" />
                   분석 중… <span className="sample-badge">샘플</span>
                 </div>
               )}
-            </div>
+            </PhotoFrame>
           ) : (
-            <div className={styles.placeholder}>
-              물품이 모두 보이게 위에서 한 장 찍어 주세요.
+            <div className={styles.placeholder} aria-live="polite">
+              {checkingPhoto
+                ? "사진을 확인하고 있어요…"
+                : "물품이 모두 보이게 위에서 한 장 찍어 주세요."}
             </div>
           )}
 
@@ -291,7 +321,7 @@ export function ReturnFlow() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={!photo}
+                  disabled={!photo || checkingPhoto}
                   onClick={() => setStep("analyzing")}
                 >
                   {step === "error" ? "다시 시도" : "결과 보기"}
@@ -312,7 +342,7 @@ export function ReturnFlow() {
           </div>
 
           <ResultPhoto
-            url={photo.url}
+            photo={photo}
             boxes={result.boxes}
             itemOrder={result.rows.map((r) => r.itemId)}
           />

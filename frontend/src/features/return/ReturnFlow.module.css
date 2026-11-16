@@ -158,19 +158,28 @@
   text-align: center;
 }
 
-.previewWrap {
-  position: relative;
+/* 사진 바깥 여백(배경). 세로 사진은 가운데에 놓인다. */
+.photoStage {
+  display: flex;
+  justify-content: center;
   border-radius: var(--radius);
-  overflow: hidden;
   background: var(--surface-muted);
 }
 
-.preview {
+/* 사진과 크기가 똑같은 틀. 상자·분석 중 표시는 이 틀 기준으로 그린다.
+   가로세로 비율과 너비는 PhotoFrame.tsx에서 실제 사진 크기로 정한다. */
+.photoFrame {
+  position: relative;
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+
+.photoImg {
   display: block;
   width: 100%;
-  height: auto;
-  max-height: 60vh;
-  object-fit: contain;
+  height: 100%;
 }
 
 .analyzing {
