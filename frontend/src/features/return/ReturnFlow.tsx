@@ -23,7 +23,8 @@ function stepIndex(step: Step) {
 
 export function ReturnFlow() {
   const inventory = useInventory();
-  if (!inventory.email || !inventory.groupId) return <p>위에서 로그인하고 반납할 물품 그룹을 선택해 주세요.</p>;
+  if (!inventory.ready) return <p>물품 목록을 준비하고 있어요.</p>;
+  if (!inventory.groupId) return <p>반납할 물품 그룹을 만들어 주세요.</p>;
   if (inventory.loading) return <p>그룹 물품을 불러오고 있어요.</p>;
   return <GroupReturnFlow key={inventory.groupId} />;
 }

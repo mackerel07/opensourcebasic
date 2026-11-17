@@ -33,13 +33,14 @@ export async function analyzePhoto(url: string, items: ReturnRequest[], signal: 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((value) => value ? resolve(value) : reject(new Error("사진 변환 실패")), "image/jpeg", 0.9);
   });
-  const { data: { session } } = await supabase().auth.getSession();
-  if (!session) throw new Error("로그인한 뒤 다시 시도해 주세요.");
+  const local = groupId.startsWith("local-");
+  const session = local ? null : (await supabase().auth.getSession()).data.session;
+  if (!local && !session) throw new Error("연결이 만료됐어요. 화면을 새로고침해 주세요.");
   const form = new FormData();
   form.set("file", blob, "return.jpg");
   form.set("items", JSON.stringify(items));
-  form.set("group_id", groupId);
-  const response = await fetch("/api/analyze", { method: "POST", body: form, signal, headers: { Authorization: `Bearer ${session.access_token}` } });
+  if (!local) form.set("group_id", groupId);
+  const response = await fetch("/api/analyze", { method: "POST", body: form, signal, headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || "모델 서버 연결에 실패했어요.");
   const result = data as ModelResponse;

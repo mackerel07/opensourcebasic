@@ -26,7 +26,7 @@ export default function HomePage() {
       </div>
 
       <p className="hint">
-        물품 목록은 로그인한 계정의 그룹에 저장됩니다. 반납 확인에서 선택한 사진은 모델 서버로 전송해 분석합니다.
+        가입 없이 바로 시작할 수 있어요. 반납 사진은 모델 서버로 전송해 분석합니다.
       </p>
     </div>
   );

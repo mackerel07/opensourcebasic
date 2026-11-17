@@ -7,20 +7,6 @@ export async function POST(request: Request) {
   if (origin && origin !== new URL(request.url).origin) {
     return Response.json({ error: "다른 사이트에서의 요청은 허용하지 않아요." }, { status: 403 });
   }
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) return Response.json({ error: "로그인이 필요해요." }, { status: 401 });
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!supabaseUrl || !publishableKey) return Response.json({ error: "DB 연결 설정이 필요해요." }, { status: 503 });
-  try {
-    const auth = await fetch(supabaseUrl + "/auth/v1/user", {
-      headers: { Authorization: authorization, apikey: publishableKey },
-      signal: AbortSignal.timeout(10000), cache: "no-store",
-    });
-    if (!auth.ok) return Response.json({ error: "다시 로그인해 주세요." }, { status: 401 });
-  } catch {
-    return Response.json({ error: "로그인 확인에 실패했어요." }, { status: 503 });
-  }
   const url = process.env.MODEL_SERVER_URL;
   const key = process.env.MODEL_SERVER_API_KEY;
   if (!url || !key) return Response.json({ error: "모델 서버 설정이 필요해요." }, { status: 503 });
@@ -39,20 +25,37 @@ export async function POST(request: Request) {
     return Response.json({ error: "4 MiB 이하 사진을 선택해 주세요." }, { status: 422 });
   }
   const groupId = form.get("group_id");
-  if (typeof groupId !== "string" || !/^[0-9a-f-]{36}$/i.test(groupId)) {
-    return Response.json({ error: "물품 그룹을 선택해 주세요." }, { status: 422 });
-  }
-  let groupItems: { label_code: string; expected_quantity: number }[];
-  try {
-    const response = await fetch(
-      supabaseUrl + "/rest/v1/item_group_items?select=label_code,expected_quantity&group_id=eq." + encodeURIComponent(groupId),
-      { headers: { Authorization: authorization, apikey: publishableKey },
-        signal: AbortSignal.timeout(10000), cache: "no-store" },
-    );
-    if (!response.ok) throw new Error();
-    groupItems = await response.json();
-  } catch {
-    return Response.json({ error: "그룹 물품을 확인하지 못했어요." }, { status: 503 });
+  let groupItems: { label_code: string; expected_quantity: number }[] | null = null;
+  // DB 그룹을 지정한 요청만 소유권을 확인한다. 비회원은 브라우저 목록을 전달한다.
+  if (groupId !== null) {
+    const authorization = request.headers.get("authorization");
+    if (!authorization?.startsWith("Bearer ")) return Response.json({ error: "그룹 접근 권한이 없어요." }, { status: 401 });
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    if (!supabaseUrl || !publishableKey) return Response.json({ error: "DB 연결 설정이 필요해요." }, { status: 503 });
+    try {
+      const auth = await fetch(supabaseUrl + "/auth/v1/user", {
+        headers: { Authorization: authorization, apikey: publishableKey },
+        signal: AbortSignal.timeout(10000), cache: "no-store",
+      });
+      if (!auth.ok) return Response.json({ error: "다시 로그인해 주세요." }, { status: 401 });
+    } catch {
+      return Response.json({ error: "로그인 확인에 실패했어요." }, { status: 503 });
+    }
+    if (typeof groupId !== "string" || !/^[0-9a-f-]{36}$/i.test(groupId)) {
+      return Response.json({ error: "물품 그룹을 선택해 주세요." }, { status: 422 });
+    }
+    try {
+      const response = await fetch(
+        supabaseUrl + "/rest/v1/item_group_items?select=label_code,expected_quantity&group_id=eq." + encodeURIComponent(groupId),
+        { headers: { Authorization: authorization, apikey: publishableKey },
+          signal: AbortSignal.timeout(10000), cache: "no-store" },
+      );
+      if (!response.ok) throw new Error();
+      groupItems = await response.json();
+    } catch {
+      return Response.json({ error: "그룹 물품을 확인하지 못했어요." }, { status: 503 });
+    }
   }
   const expected: Record<string, number> = { calculator: 0, scissors: 0, mouse: 0 };
   try {
@@ -65,13 +68,15 @@ export async function POST(request: Request) {
       if (!label || seen.has(label) || !Number.isInteger(item.requested) || item.requested < 1 || item.requested > 999) {
         throw new Error();
       }
-      const stored = groupItems.find((row) => row.label_code === label);
-      if (!stored || item.requested > stored.expected_quantity) throw new Error();
+      if (groupItems) {
+        const stored = groupItems.find((row) => row.label_code === label);
+        if (!stored || item.requested > stored.expected_quantity) throw new Error();
+      }
       seen.add(label);
       expected[label] = item.requested;
     }
   } catch {
-    return Response.json({ error: "선택한 그룹에 등록된 물품과 보유 수량을 확인해 주세요." }, { status: 422 });
+    return Response.json({ error: "지원하는 물품 종류와 수량을 확인해 주세요." }, { status: 422 });
   }
   const upstream = new FormData();
   upstream.set("file", file);

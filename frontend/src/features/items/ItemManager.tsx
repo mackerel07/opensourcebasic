@@ -70,7 +70,7 @@ function GroupItemManager() {
     try {
       if (editingId) await updateItem(editingId, input);
       else await addItem(input);
-      setMessage("Supabase에 저장했어요.");
+      setMessage(inventory.local ? "이 브라우저에 저장했어요." : "물품 목록을 저장했어요.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "저장 실패");
       return;
@@ -90,7 +90,8 @@ function GroupItemManager() {
     } finally { setSaving(false); }
   }
 
-  if (!inventory.email || !inventory.groupId) return <p>위에서 로그인하고 물품 그룹을 선택해 주세요.</p>;
+  if (!inventory.ready) return <p>물품 목록을 준비하고 있어요.</p>;
+  if (!inventory.groupId) return <p>물품 그룹을 만들어 주세요.</p>;
   if (inventory.loading) return <p>그룹 물품을 불러오고 있어요.</p>;
 
   return (
@@ -114,7 +115,7 @@ function GroupItemManager() {
             className="input"
             value={name}
             maxLength={NAME_MAX_LENGTH}
-            placeholder="예: 우산"
+            placeholder="계산기, 가위, 마우스"
             autoComplete="off"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "item-error" : undefined}
