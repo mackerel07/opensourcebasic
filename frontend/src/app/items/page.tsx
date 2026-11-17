@@ -12,7 +12,7 @@ export default function ItemsPage() {
       <header className={styles.head}>
         <h1>물품 관리</h1>
         <p className="hint">
-          계산기·가위·마우스의 보유 수량을 관리하세요.
+          계산기·가위·마우스의 수량을 관리하세요. 변경하면 모두의 목록에 반영돼요.
         </p>
       </header>
       <ItemManager />

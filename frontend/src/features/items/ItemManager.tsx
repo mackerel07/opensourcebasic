@@ -70,7 +70,7 @@ function GroupItemManager() {
     try {
       if (editingId) await updateItem(editingId, input);
       else await addItem(input);
-      setMessage(inventory.local ? "이 브라우저에 저장했어요." : "물품 목록을 저장했어요.");
+      setMessage("공유 목록에 저장했어요.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "저장 실패");
       return;
@@ -79,7 +79,7 @@ function GroupItemManager() {
   }
 
   async function handleReset() {
-    if (!window.confirm("이 그룹의 계산기·가위·마우스 수량을 각각 1개로 저장할까요?")) return;
+    if (!window.confirm("모든 사용자가 보는 이 그룹의 수량을 계산기·가위·마우스 각각 1개로 바꿀까요?")) return;
     setSaving(true);
     try {
       await resetToSample();

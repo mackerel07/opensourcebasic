@@ -26,7 +26,7 @@ export default function HomePage() {
       </div>
 
       <p className="hint">
-        가입 없이 바로 시작할 수 있어요. 반납 사진은 모델 서버로 전송해 분석합니다.
+        로그인 없이 같은 물품 목록을 함께 사용해요. 반납 사진은 모델 서버로 전송해 분석합니다.
       </p>
     </div>
   );

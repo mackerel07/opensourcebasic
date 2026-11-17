@@ -2,8 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import { createGroup, loadGuestInventory, loadInventory, selectGroup, useInventory } from "./itemStore";
+import { createGroup, loadInventory, selectGroup, useInventory } from "./itemStore";
 
 export function InventoryPanel() {
   const inventory = useInventory();
@@ -13,12 +12,7 @@ export function InventoryPanel() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    // 기존 계정 세션이 있으면 DB 자료를 유지하고, 없으면 가입 없이 시작한다.
-    let active = true;
-    void supabase().auth.getSession().then(({ data }) => {
-      if (active) void loadInventory(data.session?.user ?? null);
-    }).catch(() => { if (active) loadGuestInventory(); });
-    return () => { active = false; };
+    void loadInventory();
   }, []);
 
   async function addGroup(event: FormEvent) {
@@ -50,7 +44,7 @@ export function InventoryPanel() {
               <button className="btn" disabled={busy || inventory.loading}>만들기</button>
             </form>
           </details>
-          <p className="hint">{inventory.local ? "물품 목록은 이 브라우저에 저장돼요." : "물품 목록은 연결된 계정에 저장돼요."}</p>
+          <p className="hint">모두 함께 사용하는 공유 목록이에요.</p>
         </>
       )}
       {inventory.loading && <p role="status">그룹을 불러오고 있어요.</p>}
