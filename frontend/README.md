@@ -39,6 +39,23 @@ npm run dev
 - 사진 단계의 **화면 확인용: 분석 실패 상황 보기**를 켜면 실패 화면을 확인할 수 있습니다.
 - 임시 데이터 모양은 화면 확인용이며 DB·API 명세가 아닙니다. 실제 연결은 [사전 검토](../docs/REVIEW_GATE.md) 승인 후 진행합니다.
 
+## 배포 (Vercel)
+
+- `main`에 병합(푸시)되면 Vercel이 자동으로 프로덕션에 배포합니다. 다른 브랜치나 PR은 미리보기(Preview) 주소로 배포됩니다.
+- Vercel 프로젝트 설정: **Root Directory = `frontend`**, Framework = Next.js. 빌드 명령은 기본값(`npm run build`)을 씁니다.
+
+### 나중에 넣을 환경 변수
+
+실제 연결 전이라 지금 코드는 아래 값을 읽지 않습니다. 이름과 설명은 [`.env.example`](.env.example)에 있습니다.
+
+| 이름 | 넣을 값 |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 주소 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase **공개용** 키(anon / publishable). service_role 키는 넣지 않습니다 |
+| `MODEL_API_URL` | 모델 서버 HTTPS 주소 |
+
+값을 넣는 곳: Vercel 프로젝트 → **Settings → Environment Variables**. 넣은 뒤 **Deployments**에서 최신 배포를 **Redeploy**해야 반영됩니다. 로컬에서는 `.env.example`을 `.env.local`로 복사해 채웁니다.
+
 ## 폴더 구조
 
 ```text
