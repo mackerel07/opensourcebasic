@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { InventoryPanel } from "@/features/items/InventoryPanel";
 import { SiteHeader } from "./SiteHeader";
 import "./globals.css";
 
@@ -17,7 +18,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko">
       <body>
         <SiteHeader />
-        <main className="container">{children}</main>
+        <main className="container"><InventoryPanel />{children}</main>
       </body>
     </html>
   );

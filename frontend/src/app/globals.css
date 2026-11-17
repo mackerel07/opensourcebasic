@@ -171,3 +171,6 @@ select {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+.inventory-panel { margin: 20px 0; padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: white; }
+.inventory-panel form, .inventory-panel label { display: grid; gap: 8px; margin: 10px 0; }

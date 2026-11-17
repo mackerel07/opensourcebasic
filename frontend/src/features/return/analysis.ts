@@ -1,3 +1,6 @@
+import { modelLabel } from "./modelLabels";
+import { supabase } from "@/lib/supabase";
+
 export type ReturnRequest = { itemId: string; name: string; requested: number };
 export type Box = { itemId: string; name: string; x: number; y: number; width: number; height: number };
 export type ModelResult = {
@@ -12,19 +15,11 @@ export type ModelResponse = {
   candidates: { label: string; accepted: boolean; bbox_xyxy: [number, number, number, number] }[];
 };
 
-const LABELS: Record<string, string> = {
-  계산기: "calculator", 가위: "scissors", 마우스: "mouse", "컴퓨터 마우스": "mouse",
-  calculator: "calculator", scissors: "scissors", mouse: "mouse",
-};
-export function modelLabel(name: string): string | undefined {
-  const key = name.trim().toLowerCase();
-  return Object.hasOwn(LABELS, key) ? LABELS[key] : undefined;
-}
 export function missingCount(requested: number, confirmed: number) {
   return Math.max(0, requested - confirmed);
 }
 
-export async function analyzePhoto(url: string, items: ReturnRequest[], signal: AbortSignal): Promise<ModelResult> {
+export async function analyzePhoto(url: string, items: ReturnRequest[], signal: AbortSignal, groupId: string): Promise<ModelResult> {
   const image = new Image();
   image.src = url;
   await image.decode();
@@ -38,10 +33,13 @@ export async function analyzePhoto(url: string, items: ReturnRequest[], signal: 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((value) => value ? resolve(value) : reject(new Error("사진 변환 실패")), "image/jpeg", 0.9);
   });
+  const { data: { session } } = await supabase().auth.getSession();
+  if (!session) throw new Error("로그인한 뒤 다시 시도해 주세요.");
   const form = new FormData();
   form.set("file", blob, "return.jpg");
   form.set("items", JSON.stringify(items));
-  const response = await fetch("/api/analyze", { method: "POST", body: form, signal });
+  form.set("group_id", groupId);
+  const response = await fetch("/api/analyze", { method: "POST", body: form, signal, headers: { Authorization: `Bearer ${session.access_token}` } });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || "모델 서버 연결에 실패했어요.");
   const result = data as ModelResponse;
