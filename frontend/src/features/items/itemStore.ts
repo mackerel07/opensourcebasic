@@ -20,9 +20,9 @@ export const QUANTITY_MAX = 999;
 const STORAGE_KEY = "osb-sample-items-v1";
 
 const SAMPLE_ITEMS: Item[] = [
-  { id: "sample-umbrella", name: "우산", quantity: 5 },
-  { id: "sample-battery", name: "보조배터리", quantity: 3 },
-  { id: "sample-tripod", name: "삼각대", quantity: 2 },
+  { id: "sample-calculator", name: "계산기", quantity: 1 },
+  { id: "sample-scissors", name: "가위", quantity: 1 },
+  { id: "sample-mouse", name: "마우스", quantity: 1 },
 ];
 
 let cache: Item[] | null = null;

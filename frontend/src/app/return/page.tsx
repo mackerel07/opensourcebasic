@@ -12,8 +12,7 @@ export default function ReturnPage() {
       <header className={styles.head}>
         <h1>반납 확인</h1>
         <p className="hint">
-          화면 확인용 샘플입니다. 사진은 이 기기에서만 보이고 서버로 보내지
-          않습니다.
+          선택한 사진을 모델 서버로 보내 분석합니다. 결과 수량을 직접 확인해 주세요.
         </p>
       </header>
       <ReturnFlow />
