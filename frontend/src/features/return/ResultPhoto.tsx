@@ -2,7 +2,7 @@
 
 import type { Photo } from "./loadPhoto";
 import { PhotoFrame } from "./PhotoFrame";
-import type { Box } from "./sampleAnalysis";
+import type { Box } from "./analysis";
 import styles from "./ReturnFlow.module.css";
 
 const COLORS = ["#2f8f5f", "#c05621", "#2b6cb0", "#9b2c9b", "#b7791f", "#2c7a7b"];
@@ -14,7 +14,7 @@ type Props = {
   itemOrder: string[];
 };
 
-/** 사진 위에 물품 위치(샘플)를 상자로 표시한다. 상자 위치는 실제 사진 영역 기준이다. */
+/** 사진 위에 물품 위치를 상자로 표시한다. 상자 위치는 실제 사진 영역 기준이다. */
 export function ResultPhoto({ photo, boxes, itemOrder }: Props) {
   const colorOf = (itemId: string) =>
     COLORS[Math.max(0, itemOrder.indexOf(itemId)) % COLORS.length];
@@ -45,8 +45,8 @@ export function ResultPhoto({ photo, boxes, itemOrder }: Props) {
         ))}
       </PhotoFrame>
       <figcaption className="hint">
-        상자는 샘플 위치예요. 사진 속 실제 물품 위치와 다를 수 있어요.
-        {boxes.length === 0 && " 찾은 물품이 없어요."}
+        모델이 확정한 후보 위치입니다. 사진과 수량을 함께 확인해 주세요.
+        {boxes.length === 0 && " 확정된 후보가 없어요."}
       </figcaption>
     </figure>
   );

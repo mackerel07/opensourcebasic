@@ -7,18 +7,12 @@ import { decodePhoto, type Photo } from "./loadPhoto";
 import { PhotoFrame } from "./PhotoFrame";
 import { QuantityStepper } from "./QuantityStepper";
 import { ResultPhoto } from "./ResultPhoto";
-import {
-  SAMPLE_DELAY_MS,
-  makeSampleResult,
-  missingCount,
-  type ReturnRequest,
-  type SampleResult,
-} from "./sampleAnalysis";
+import { analyzePhoto, missingCount, type ReturnRequest, type ModelResult } from "./analysis";
 import styles from "./ReturnFlow.module.css";
 
 type Step = "select" | "photo" | "analyzing" | "error" | "result" | "done";
 
-const SAMPLE_LABEL = "샘플 결과 · 실제 AI 분석 아님";
+const RESULT_LABEL = "모델 분석 결과 · 수량 직접 확인";
 
 const STEP_LABELS = ["물품 선택", "사진", "결과 확인"];
 function stepIndex(step: Step) {
@@ -34,8 +28,9 @@ export function ReturnFlow() {
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [checkingPhoto, setCheckingPhoto] = useState(false);
-  const [simulateFailure, setSimulateFailure] = useState(false);
-  const [result, setResult] = useState<SampleResult | null>(null);
+  const [analysisError, setAnalysisError] = useState("");
+  const requestRef = useRef<AbortController | null>(null);
+  const [result, setResult] = useState<ModelResult | null>(null);
   const [confirmed, setConfirmed] = useState<Record<string, number>>({});
   const headingRef = useRef<HTMLHeadingElement>(null);
   const photoUrlRef = useRef<string | null>(null);
@@ -55,29 +50,30 @@ export function ReturnFlow() {
     headingRef.current?.focus();
   }, [step]);
 
-  // 샘플 분석: 일정 시간 "분석 중"을 보여준 뒤 샘플 결과 또는 실패를 보여준다.
-  useEffect(() => {
-    if (step !== "analyzing") return;
-    const timer = window.setTimeout(() => {
-      if (simulateFailure) {
-        setStep("error");
-        return;
-      }
-      const sample = makeSampleResult(requests);
-      setResult(sample);
-      setConfirmed(
-        Object.fromEntries(sample.rows.map((r) => [r.itemId, r.estimated])),
-      );
+  async function runAnalysis() {
+    if (!photo) return;
+    const controller = new AbortController();
+    requestRef.current?.abort();
+    requestRef.current = controller;
+    setAnalysisError("");
+    setStep("analyzing");
+    try {
+      const actual = await analyzePhoto(photo.url, requests, controller.signal);
+      if (controller.signal.aborted) return;
+      setResult(actual);
+      setConfirmed(Object.fromEntries(actual.rows.map((row) => [row.itemId, row.estimated])));
       setStep("result");
-    }, SAMPLE_DELAY_MS);
-    return () => window.clearTimeout(timer);
-    // requests는 분석 시작 시점의 선택으로 고정한다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, simulateFailure]);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setAnalysisError(error instanceof Error ? error.message : "분석에 실패했어요.");
+      setStep("error");
+    }
+  }
 
   // 화면을 떠날 때 사진 미리보기 주소를 정리한다.
   useEffect(() => {
     return () => {
+      requestRef.current?.abort();
       if (photoUrlRef.current) URL.revokeObjectURL(photoUrlRef.current);
     };
   }, []);
@@ -142,7 +138,7 @@ export function ReturnFlow() {
     setSelected({});
     setResult(null);
     setConfirmed({});
-    setSimulateFailure(false);
+    setAnalysisError("");
     setStep("select");
   }
 
@@ -251,7 +247,7 @@ export function ReturnFlow() {
               {step === "analyzing" && (
                 <div className={styles.analyzing} role="status">
                   <span className={styles.spinner} aria-hidden="true" />
-                  분석 중… <span className="sample-badge">샘플</span>
+                  모델 분석 중…
                 </div>
               )}
             </PhotoFrame>
@@ -265,8 +261,7 @@ export function ReturnFlow() {
 
           {step === "error" && (
             <div className={styles.errorBox} role="alert">
-              <strong>샘플 실패 상황입니다.</strong> 사진을 다시 찍거나 다시
-              시도해 주세요. 결과는 저장되지 않았어요.
+              {analysisError}
             </div>
           )}
 
@@ -301,15 +296,6 @@ export function ReturnFlow() {
               </div>
               {photo && <p className="hint">선택한 사진: {photo.name}</p>}
 
-              <label className={styles.devToggle}>
-                <input
-                  type="checkbox"
-                  checked={simulateFailure}
-                  onChange={(e) => setSimulateFailure(e.target.checked)}
-                />
-                화면 확인용: 분석 실패 상황 보기
-              </label>
-
               <div className={styles.actions}>
                 <button
                   type="button"
@@ -322,7 +308,7 @@ export function ReturnFlow() {
                   type="button"
                   className="btn btn-primary"
                   disabled={!photo || checkingPhoto}
-                  onClick={() => setStep("analyzing")}
+                  onClick={runAnalysis}
                 >
                   {step === "error" ? "다시 시도" : "결과 보기"}
                 </button>
@@ -338,7 +324,7 @@ export function ReturnFlow() {
             <h2 id="step-title" ref={headingRef} tabIndex={-1}>
               결과를 확인해 주세요
             </h2>
-            <span className="sample-badge">{SAMPLE_LABEL}</span>
+            <span className="sample-badge">{RESULT_LABEL}</span>
           </div>
 
           <ResultPhoto
@@ -347,6 +333,9 @@ export function ReturnFlow() {
             itemOrder={result.rows.map((r) => r.itemId)}
           />
 
+          {result.status === "review" && (
+            <p className="error" role="status">자동 확정이 어려워요. 사진을 보고 각 물품의 수량을 직접 확인해 주세요.</p>
+          )}
           <p className="hint">
             사진과 다르면 확인 수량을 고쳐 주세요. 고른 수량보다 적으면
             누락으로 표시돼요.
@@ -419,7 +408,7 @@ export function ReturnFlow() {
             <h2 id="step-title" ref={headingRef} tabIndex={-1}>
               반납 확인을 마쳤어요
             </h2>
-            <span className="sample-badge">{SAMPLE_LABEL}</span>
+            <span className="sample-badge">{RESULT_LABEL}</span>
           </div>
 
           <ul className={styles.doneList}>
@@ -443,7 +432,7 @@ export function ReturnFlow() {
           </ul>
 
           <p className="hint">
-            화면 확인용 결과라서 서버에 저장되지 않았어요.
+            확인한 결과는 현재 화면에서만 유지됩니다.
           </p>
 
           <div className={styles.actions}>
