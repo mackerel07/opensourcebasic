@@ -216,3 +216,7 @@ Wilson 95% 구간도 계산하지만 서로 비슷한 연속 사진을 독립 �
 - PyTorch 버전 조합: https://pytorch.org/get-started/previous-versions/
 
 원본 모델 코드·가중치와 데이터셋의 이용 조건은 각각 확인해야 한다. 설치 스크립트는 모델 코드와 가중치를 공식 주소에서 가져오며 데이터셋을 재배포하지 않는다.
+
+## dataset-v1 초기 학습
+
+[학습 계획과 재현 명령](TRAIN_PLAN.md) · [실제 학습 결과와 남은 문제](TRAIN_RESULT.md)

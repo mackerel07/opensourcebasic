@@ -1,0 +1,164 @@
+{
+  "single/mouse/mouse_02.jpg": {
+    "box": [
+      210,
+      290,
+      540,
+      610
+    ],
+    "positive_points": [
+      [
+        300,
+        380
+      ],
+      [
+        420,
+        480
+      ]
+    ]
+  },
+  "single/scissors/scissors_01.jpg": {
+    "box": [
+      20,
+      370,
+      690,
+      640
+    ],
+    "positive_points": [
+      [
+        160,
+        470
+      ],
+      [
+        480,
+        500
+      ]
+    ]
+  },
+  "single/scissors/scissors_02.jpg": {
+    "box": [
+      170,
+      230,
+      720,
+      820
+    ],
+    "positive_points": [
+      [
+        560,
+        400
+      ],
+      [
+        360,
+        630
+      ]
+    ]
+  },
+  "single/scissors/scissors_03.jpg": {
+    "box": [
+      130,
+      170,
+      650,
+      770
+    ],
+    "positive_points": [
+      [
+        330,
+        360
+      ],
+      [
+        500,
+        580
+      ]
+    ]
+  },
+  "single/scissors/scissors_04.jpg": {
+    "box": [
+      270,
+      300,
+      560,
+      810
+    ],
+    "positive_points": [
+      [
+        410,
+        660
+      ],
+      [
+        340,
+        450
+      ]
+    ]
+  },
+  "single/scissors/scissors_05.jpg": {
+    "box": [
+      60,
+      320,
+      690,
+      620
+    ],
+    "positive_points": [
+      [
+        230,
+        465
+      ],
+      [
+        470,
+        435
+      ]
+    ]
+  },
+  "single/scissors/scissors_06.jpg": {
+    "box": [
+      240,
+      90,
+      610,
+      890
+    ],
+    "positive_points": [
+      [
+        460,
+        300
+      ],
+      [
+        430,
+        650
+      ]
+    ]
+  },
+  "single/scissors/scissors_07.jpg": {
+    "box": [
+      180,
+      90,
+      570,
+      900
+    ],
+    "positive_points": [
+      [
+        350,
+        300
+      ],
+      [
+        420,
+        650
+      ]
+    ]
+  },
+  "single/scissors/scissors_08.jpg": {
+    "box": [
+      0,
+      10,
+      768,
+      560
+    ],
+    "positive_points": [
+      [
+        190,
+        200
+      ],
+      [
+        530,
+        380
+      ]
+    ]
+  }
+}

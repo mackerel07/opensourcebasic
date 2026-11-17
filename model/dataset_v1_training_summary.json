@@ -1,0 +1,121 @@
+{
+  "date_kst": "2026-11-17",
+  "dataset_release": "https://github.com/mackerel07/opensourcebasic/releases/tag/dataset-v1",
+  "archive_sha256": "9184722b771df5129e8619d5ab68739a6f4d8724bd43595a3047b2f5d13693a0",
+  "split_status": "provisional; EXIF-assisted grouping, not confirmed by photographer",
+  "device": "Apple M4 CPU",
+  "backbones_frozen": [
+    "SAM2.1 Small",
+    "DINOv2 ViT-S/14"
+  ],
+  "features_shape": [
+    50,
+    384
+  ],
+  "automatic_whole_object_crops": 22,
+  "box_and_point_corrected_whole_object_crops": 9,
+  "background_crops": 19,
+  "train": {
+    "n_crops": 39,
+    "n_source_images": 23,
+    "support": {
+      "calculator": 8,
+      "mouse": 10,
+      "other": 16,
+      "scissors": 5
+    },
+    "accuracy": 1.0,
+    "macro_f1": 1.0,
+    "accepted_by_current_thresholds": 0,
+    "min_top_score": 0.31222596197996455,
+    "max_top_score": 0.3807992638243798
+  },
+  "val": {
+    "n_crops": 11,
+    "n_source_images": 8,
+    "support": {
+      "calculator": 2,
+      "mouse": 3,
+      "other": 3,
+      "scissors": 3
+    },
+    "accuracy": 1.0,
+    "macro_f1": 1.0,
+    "accepted_by_current_thresholds": 0,
+    "min_top_score": 0.2993984724330958,
+    "max_top_score": 0.3679863088454741
+  },
+  "selection": {
+    "classes": [
+      "calculator",
+      "scissors",
+      "mouse",
+      "other"
+    ],
+    "selected_C": 0.1,
+    "selection": [
+      {
+        "C": 0.1,
+        "val_macro_f1": 1.0,
+        "val_accuracy": 1.0
+      },
+      {
+        "C": 1.0,
+        "val_macro_f1": 1.0,
+        "val_accuracy": 1.0
+      },
+      {
+        "C": 10.0,
+        "val_macro_f1": 1.0,
+        "val_accuracy": 1.0
+      },
+      {
+        "C": 100.0,
+        "val_macro_f1": 1.0,
+        "val_accuracy": 1.0
+      }
+    ],
+    "n_train": 39,
+    "n_val": 11,
+    "selection_source": "all validation sources",
+    "refit_on_val": false,
+    "note": "No test labels were used for model selection. Thresholds need separate scene validation."
+  },
+  "final_return_eval_images_used": 0,
+  "model_sha256": "009a89e00b381490c4a07dde6059b36342e3c8282c00894aa55d826f249f8240",
+  "thresholds": {
+    "class_score_min": 0.7,
+    "class_margin_min": 0.15
+  },
+  "checks": {
+    "pip_check": "passed",
+    "existing_core_tests": 11,
+    "prompted_crop_replay_exact": 27
+  },
+  "development_scene_runs": {
+    "scissors06": {
+      "status": "review",
+      "n_candidates": 1,
+      "counts": {
+        "calculator": 0,
+        "scissors": 0,
+        "mouse": 0
+      },
+      "latency_ms": 11662.08316600023,
+      "model_load_ms": 2063.5481669996807,
+      "classifier_supplied": true
+    },
+    "calculator01": {
+      "status": "review",
+      "n_candidates": 15,
+      "counts": {
+        "calculator": 0,
+        "scissors": 0,
+        "mouse": 0
+      },
+      "latency_ms": 11993.891374999293,
+      "model_load_ms": 1705.986250000933,
+      "classifier_supplied": true
+    }
+  }
+}
