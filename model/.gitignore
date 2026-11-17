@@ -16,3 +16,7 @@ sample/
 manifest.csv
 scenes_truth.csv
 scenes_predictions.csv
+.env*
+!.env.server.example
+
+.venv
