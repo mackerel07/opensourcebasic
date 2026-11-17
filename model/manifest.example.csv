@@ -1,0 +1,13 @@
+path,label,split,group,source
+data/crops/calculator_train.png,calculator,train,public_calculator_001,officehome
+data/crops/scissors_train.png,scissors,train,public_scissors_001,officehome
+data/crops/mouse_train.png,mouse,train,public_mouse_001,officehome
+data/crops/other_train.png,other,train,public_other_001,officehome
+data/crops/calculator_val.png,calculator,val,local_session_b,local
+data/crops/scissors_val.png,scissors,val,local_session_b,local
+data/crops/mouse_val.png,mouse,val,local_session_b,local
+data/crops/other_val.png,other,val,local_session_b,local
+data/crops/calculator_test.png,calculator,test,local_session_c,local
+data/crops/scissors_test.png,scissors,test,local_session_c,local
+data/crops/mouse_test.png,mouse,test,local_session_c,local
+data/crops/other_test.png,other,test,local_session_c,local
