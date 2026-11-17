@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useItems } from "@/features/items/itemStore";
+import { useItems, useInventory } from "@/features/items/itemStore";
 import { decodePhoto, type Photo } from "./loadPhoto";
 import { PhotoFrame } from "./PhotoFrame";
 import { QuantityStepper } from "./QuantityStepper";
@@ -22,7 +22,15 @@ function stepIndex(step: Step) {
 }
 
 export function ReturnFlow() {
+  const inventory = useInventory();
+  if (!inventory.email || !inventory.groupId) return <p>위에서 로그인하고 반납할 물품 그룹을 선택해 주세요.</p>;
+  if (inventory.loading) return <p>그룹 물품을 불러오고 있어요.</p>;
+  return <GroupReturnFlow key={inventory.groupId} />;
+}
+
+function GroupReturnFlow() {
   const items = useItems();
+  const { groupId } = useInventory();
   const [step, setStep] = useState<Step>("select");
   const [selected, setSelected] = useState<Record<string, number>>({});
   const [photo, setPhoto] = useState<Photo | null>(null);
@@ -58,7 +66,7 @@ export function ReturnFlow() {
     setAnalysisError("");
     setStep("analyzing");
     try {
-      const actual = await analyzePhoto(photo.url, requests, controller.signal);
+      const actual = await analyzePhoto(photo.url, requests, controller.signal, groupId);
       if (controller.signal.aborted) return;
       setResult(actual);
       setConfirmed(Object.fromEntries(actual.rows.map((row) => [row.itemId, row.estimated])));

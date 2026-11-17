@@ -9,13 +9,21 @@ import {
   resetToSample,
   updateItem,
   useItems,
+  useInventory,
   validateItem,
   type Item,
 } from "./itemStore";
 import styles from "./ItemManager.module.css";
 
 export function ItemManager() {
+  const inventory = useInventory();
+  return <GroupItemManager key={inventory.groupId} />;
+}
+
+function GroupItemManager() {
   const items = useItems();
+  const inventory = useInventory();
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -49,7 +57,7 @@ export function ItemManager() {
     setQuantity(String(next));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const input = { name, quantity: Number(quantity) };
     const problem = validateItem(input, items, editingId);
@@ -58,23 +66,32 @@ export function ItemManager() {
       nameRef.current?.focus();
       return;
     }
-    if (editingId) {
-      updateItem(editingId, input);
-      setMessage(`“${input.name.trim()}” 수정을 저장했어요.`);
-    } else {
-      addItem(input);
-      setMessage(`“${input.name.trim()}”을(를) 등록했어요.`);
-    }
+    setSaving(true);
+    try {
+      if (editingId) await updateItem(editingId, input);
+      else await addItem(input);
+      setMessage("Supabase에 저장했어요.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "저장 실패");
+      return;
+    } finally { setSaving(false); }
     clearForm();
   }
 
-  function handleReset() {
-    if (window.confirm("임시 데이터를 처음 샘플 상태로 되돌릴까요?")) {
-      resetToSample();
+  async function handleReset() {
+    if (!window.confirm("이 그룹의 계산기·가위·마우스 수량을 각각 1개로 저장할까요?")) return;
+    setSaving(true);
+    try {
+      await resetToSample();
       clearForm();
-      setMessage("샘플 데이터로 되돌렸어요.");
-    }
+      setMessage("세 품목을 각각 1개로 저장했어요.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "저장 실패");
+    } finally { setSaving(false); }
   }
+
+  if (!inventory.email || !inventory.groupId) return <p>위에서 로그인하고 물품 그룹을 선택해 주세요.</p>;
+  if (inventory.loading) return <p>그룹 물품을 불러오고 있어요.</p>;
 
   return (
     <div className={styles.wrap}>
@@ -82,6 +99,7 @@ export function ItemManager() {
         className={styles.form}
         onSubmit={handleSubmit}
         aria-labelledby="item-form-title"
+        aria-busy={saving}
         noValidate
       >
         <h2 id="item-form-title">
@@ -144,7 +162,7 @@ export function ItemManager() {
         )}
 
         <div className={styles.actions}>
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary" disabled={saving}>
             {editingItem ? "수정 저장" : "등록"}
           </button>
           {editingItem && (
@@ -190,6 +208,7 @@ export function ItemManager() {
                 <button
                   type="button"
                   className="btn btn-small"
+                  disabled={saving}
                   onClick={() => startEdit(item)}
                   aria-label={`${item.name} 수정`}
                 >
@@ -200,8 +219,8 @@ export function ItemManager() {
           </ul>
         )}
 
-        <button type="button" className={styles.reset} onClick={handleReset}>
-          샘플 데이터로 되돌리기
+        <button type="button" className={styles.reset} onClick={handleReset} disabled={saving}>
+          기본 세 품목 저장
         </button>
       </section>
     </div>

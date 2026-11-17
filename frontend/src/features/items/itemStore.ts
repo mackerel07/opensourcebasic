@@ -1,127 +1,132 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+import { modelLabel } from "../return/modelLabels";
 
-/**
- * 화면 확인용 임시 물품 데이터.
- * 실제 DB·API 명세가 아니며, 저장소 소유자 검토 후 서버 연결로 바꾼다.
- * (docs/REVIEW_GATE.md 참고)
- */
-export type Item = {
-  id: string;
-  name: string;
-  quantity: number;
+export type Item = { id: string; name: string; quantity: number };
+export type ItemInput = { name: string; quantity: number };
+type Group = { id: string; name: string };
+type Inventory = {
+  items: Item[];
+  groups: Group[];
+  groupId: string;
+  email: string;
+  ready: boolean;
+  loading: boolean;
+  error: string;
 };
-
 export const NAME_MAX_LENGTH = 30;
 export const QUANTITY_MIN = 1;
 export const QUANTITY_MAX = 999;
-
-const STORAGE_KEY = "osb-sample-items-v1";
-
-const SAMPLE_ITEMS: Item[] = [
-  { id: "sample-calculator", name: "계산기", quantity: 1 },
-  { id: "sample-scissors", name: "가위", quantity: 1 },
-  { id: "sample-mouse", name: "마우스", quantity: 1 },
-];
-
-let cache: Item[] | null = null;
+const names: Record<string, string> = { calculator: "계산기", scissors: "가위", mouse: "마우스" };
+const initial: Inventory = { items: [], groups: [], groupId: "", email: "", ready: false, loading: false, error: "" };
+let state = initial;
+let revision = 0;
 const listeners = new Set<() => void>();
-
-function isItem(value: unknown): value is Item {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.id === "string" &&
-    typeof v.name === "string" &&
-    typeof v.quantity === "number" &&
-    Number.isInteger(v.quantity)
-  );
-}
-
-function load(): Item[] {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return SAMPLE_ITEMS;
-    const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.every(isItem)) return parsed;
-  } catch {
-    // 저장소를 쓸 수 없는 환경(사생활 보호 모드 등)에서는 샘플 데이터로 동작한다.
-  }
-  return SAMPLE_ITEMS;
-}
-
-function getSnapshot(): Item[] {
-  if (cache === null) cache = load();
-  return cache;
-}
-
-function getServerSnapshot(): Item[] {
-  return SAMPLE_ITEMS;
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function save(next: Item[]) {
-  cache = next;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    // 저장에 실패해도 현재 화면에서는 계속 쓸 수 있게 한다.
-  }
+function publish(change: Partial<Inventory>) {
+  state = { ...state, ...change };
   listeners.forEach((listener) => listener());
 }
-
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+export function useInventory() {
+  return useSyncExternalStore(subscribe, () => state, () => initial);
+}
 export function useItems(): Item[] {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  return useInventory().items;
 }
 
-export type ItemInput = { name: string; quantity: number };
+async function readItems(groupId: string) {
+  const { data, error } = await supabase().from("item_group_items")
+    .select("label_code,expected_quantity").eq("group_id", groupId).order("label_code");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.label_code as string,
+    name: names[row.label_code] ?? row.label_code,
+    quantity: row.expected_quantity as number,
+  }));
+}
 
-/** 입력값을 검사하고, 문제가 있으면 사용자에게 보여줄 문장을 돌려준다. */
-export function validateItem(
-  input: ItemInput,
-  items: Item[],
-  editingId: string | null,
-): string | null {
-  const name = input.name.trim();
-  if (name.length === 0) return "물품 이름을 입력해 주세요.";
-  if (name.length > NAME_MAX_LENGTH)
-    return `물품 이름은 ${NAME_MAX_LENGTH}자 이하로 입력해 주세요.`;
-  if (!Number.isInteger(input.quantity))
-    return "수량은 정수로 입력해 주세요.";
-  if (input.quantity < QUANTITY_MIN || input.quantity > QUANTITY_MAX)
-    return `수량은 ${QUANTITY_MIN}~${QUANTITY_MAX} 사이로 입력해 주세요.`;
-  const duplicate = items.some(
-    (item) => item.id !== editingId && item.name === name,
-  );
-  if (duplicate) return "같은 이름의 물품이 이미 있어요.";
+export async function selectGroup(groupId: string) {
+  const current = ++revision;
+  publish({ groupId, items: [], loading: true, error: "" });
+  try {
+    const items = await readItems(groupId);
+    if (current === revision) publish({ items, loading: false });
+  } catch {
+    if (current === revision) publish({ error: "그룹 물품을 읽지 못했어요. 다시 선택해 주세요.", loading: false });
+  }
+}
+
+export async function loadInventory(user: User | null) {
+  const current = ++revision;
+  publish({ ...initial, ready: true, email: user?.email ?? "", loading: !!user });
+  if (!user) return;
+  const { data, error } = await supabase().from("item_groups").select("id,name").order("created_at");
+  if (current !== revision) return;
+  if (error) {
+    publish({ error: "물품 그룹 조회에 실패했어요. 다시 로그인해 주세요.", loading: false });
+    return;
+  }
+  const groups = (data ?? []) as Group[];
+  publish({ groups, loading: false });
+  if (groups[0]) await selectGroup(groups[0].id);
+}
+
+export async function createGroup(name: string) {
+  const current = revision;
+  if (!name.trim()) throw new Error("그룹 이름을 입력해 주세요.");
+  const { data, error } = await supabase().from("item_groups")
+    .insert({ name: name.trim() }).select("id,name").single();
+  if (error || !data) throw new Error("그룹 생성에 실패했어요.");
+  if (current !== revision) return;
+  publish({ groups: [...state.groups, data as Group] });
+  await selectGroup(data.id);
+}
+
+export function validateItem(input: ItemInput, items: Item[], editingId: string | null) {
+  const code = modelLabel(input.name);
+  if (!code) return "물품 이름은 계산기, 가위, 마우스 중에서 입력해 주세요.";
+  if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 999) {
+    return "수량은 1~999 사이 정수로 입력해 주세요.";
+  }
+  if (items.some((item) => item.id !== editingId && item.id === code)) {
+    return "같은 종류의 물품이 이미 있어요.";
+  }
   return null;
 }
 
-export function addItem(input: ItemInput): Item {
-  const item: Item = {
-    id: `item-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-    name: input.name.trim(),
-    quantity: input.quantity,
-  };
-  save([...getSnapshot(), item]);
-  return item;
+async function saveItem(input: ItemInput, editingId: string | null) {
+  const groupId = state.groupId;
+  if (!groupId || state.loading) throw new Error("먼저 물품 그룹을 선택해 주세요.");
+  const problem = validateItem(input, state.items, editingId);
+  if (problem) throw new Error(problem);
+  const code = modelLabel(input.name)!;
+  const row = { label_code: code, expected_quantity: input.quantity };
+  const table = supabase().from("item_group_items");
+  const { data, error } = editingId
+    ? await table.update(row).eq("group_id", groupId).eq("label_code", editingId).select("label_code")
+    : await table.insert({ ...row, group_id: groupId }).select("label_code");
+  if (error || !data?.length) throw new Error("저장하지 못했어요. 로그인과 그룹을 확인해 주세요.");
+  if (state.groupId === groupId) await selectGroup(groupId);
 }
-
-export function updateItem(id: string, input: ItemInput) {
-  save(
-    getSnapshot().map((item) =>
-      item.id === id
-        ? { ...item, name: input.name.trim(), quantity: input.quantity }
-        : item,
-    ),
-  );
+export async function addItem(input: ItemInput) {
+  await saveItem(input, null);
 }
-
-export function resetToSample() {
-  save(SAMPLE_ITEMS);
+export async function updateItem(id: string, input: ItemInput) {
+  await saveItem(input, id);
+}
+export async function resetToSample() {
+  const groupId = state.groupId;
+  if (!groupId || state.loading) throw new Error("먼저 물품 그룹을 선택해 주세요.");
+  const rows = Object.keys(names).map((code) => ({
+    group_id: groupId, label_code: code, expected_quantity: 1,
+  }));
+  const { error } = await supabase().from("item_group_items").upsert(rows, { onConflict: "group_id,label_code" });
+  if (error) throw new Error("기본 물품 저장에 실패했어요.");
+  if (state.groupId === groupId) await selectGroup(groupId);
 }

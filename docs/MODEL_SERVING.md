@@ -42,14 +42,16 @@ Supabase 프로젝트 sxawnuwifpzvwfjrhaiv에 소유자가 SQL을 적용했다. 
 | NEXT_PUBLIC_SUPABASE_URL | Supabase 프로젝트 URL |
 | NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | 해당 프로젝트의 publishable key |
 
-Preview와 Production에 필요한 값을 각각 넣고 재배포한다. MODEL_SERVER_API_KEY는 서버 코드에서만 읽는다. 브라우저는 Vercel의 서버 경로를 통해 호출한다. 사진 분석은 공개 웹 데모이며 비밀 모델 키는 서버에서만 사용한다.
+Preview와 Production에 필요한 값을 각각 넣고 재배포한다. MODEL_SERVER_API_KEY는 서버 코드에서만 읽는다. 브라우저는 Vercel의 서버 경로를 통해 호출한다. 사진 분석 요청은 Supabase 사용자 JWT를 검증하며 비밀 모델 키는 서버에서만 사용한다.
 
 `frontend/.env.example`은 공유용 양식이다. 이 컴퓨터의 `frontend/.env.vercel.local`에는 실제 터널 주소와 모델 API 키가 들어 있다. Supabase 값은 프로젝트 확인 후 채운다. 개인 설정 파일은 Git에서 제외된다.
 
-UI는 현재 샘플 흐름이다. 실제 Supabase 로그인·그룹 조회와 Vercel 서버 경로 연결은 이 계약에 맞춰 별도 구현한다.
+UI에서 이메일 회원가입·로그인, 그룹 생성·선택, 그룹별 수량 등록·수정을 Supabase와 연결했다.
 
 ## 프론트 실제 연결
 
 반납 화면은 사진을 최대 1600px JPEG로 줄여 같은 사이트의 POST /api/analyze로 보낸다. Vercel이 비밀 API 키를 붙여 모델의 /predict를 호출한다. 계산기·가위·마우스의 한글 이름과 클래스 코드를 매핑하며 모델의 실제 counts와 위치를 화면에 표시한다. review는 사용자 확인 안내로 표시한다.
 
-물품 목록은 브라우저 로컬 저장소를 사용한다. 이전 우산·보조배터리·삼각대 목록이 남아 있다면 물품 관리에서 기본 목록으로 되돌리거나 계산기·가위·마우스를 등록한다. 최종 확인 수량은 현재 화면에서 유지한다. Supabase 로그인·그룹 저장은 추가 연결 대상이다.
+물품 목록은 item_groups와 item_group_items에 저장한다. 이메일 회원가입·인증·로그인 후 그룹을 만들고 기본 세 품목을 저장하거나 개별 등록한다. 그룹을 바꾸면 반납 화면도 해당 그룹으로 초기화한다. 사진 분석 API는 사용자 JWT와 그룹의 등록 수량을 확인한다. 기존 마이그레이션 그대로 사용한다.
+
+최종 반납 확인 수량은 현재 화면에 유지한다. 별도의 반납 이력 저장 테이블은 이번 마이그레이션 범위에 포함되지 않는다.

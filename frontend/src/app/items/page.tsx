@@ -12,7 +12,7 @@ export default function ItemsPage() {
       <header className={styles.head}>
         <h1>물품 관리</h1>
         <p className="hint">
-          임시 데이터 · 이 브라우저에만 저장되며 서버로 보내지 않습니다.
+          선택한 그룹의 물품을 Supabase에 저장합니다.
         </p>
       </header>
       <ItemManager />
