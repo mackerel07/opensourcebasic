@@ -7,20 +7,9 @@ export async function POST(request: Request) {
   if (origin && origin !== new URL(request.url).origin) {
     return Response.json({ error: "다른 사이트에서의 요청은 허용하지 않아요." }, { status: 403 });
   }
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) return Response.json({ error: "로그인이 필요해요." }, { status: 401 });
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!supabaseUrl || !publishableKey) return Response.json({ error: "DB 연결 설정이 필요해요." }, { status: 503 });
-  try {
-    const auth = await fetch(supabaseUrl + "/auth/v1/user", {
-      headers: { Authorization: authorization, apikey: publishableKey },
-      signal: AbortSignal.timeout(10000), cache: "no-store",
-    });
-    if (!auth.ok) return Response.json({ error: "다시 로그인해 주세요." }, { status: 401 });
-  } catch {
-    return Response.json({ error: "로그인 확인에 실패했어요." }, { status: 503 });
-  }
   const url = process.env.MODEL_SERVER_URL;
   const key = process.env.MODEL_SERVER_API_KEY;
   if (!url || !key) return Response.json({ error: "모델 서버 설정이 필요해요." }, { status: 503 });
@@ -45,8 +34,8 @@ export async function POST(request: Request) {
   let groupItems: { label_code: string; expected_quantity: number }[];
   try {
     const response = await fetch(
-      supabaseUrl + "/rest/v1/item_group_items?select=label_code,expected_quantity&group_id=eq." + encodeURIComponent(groupId),
-      { headers: { Authorization: authorization, apikey: publishableKey },
+      supabaseUrl + "/rest/v1/shared_item_group_items?select=label_code,expected_quantity&group_id=eq." + encodeURIComponent(groupId),
+      { headers: { apikey: publishableKey },
         signal: AbortSignal.timeout(10000), cache: "no-store" },
     );
     if (!response.ok) throw new Error();

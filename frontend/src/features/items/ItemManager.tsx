@@ -70,7 +70,7 @@ function GroupItemManager() {
     try {
       if (editingId) await updateItem(editingId, input);
       else await addItem(input);
-      setMessage("Supabase에 저장했어요.");
+      setMessage("공유 목록에 저장했어요.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "저장 실패");
       return;
@@ -79,7 +79,7 @@ function GroupItemManager() {
   }
 
   async function handleReset() {
-    if (!window.confirm("이 그룹의 계산기·가위·마우스 수량을 각각 1개로 저장할까요?")) return;
+    if (!window.confirm("모든 사용자가 보는 이 그룹의 수량을 계산기·가위·마우스 각각 1개로 바꿀까요?")) return;
     setSaving(true);
     try {
       await resetToSample();
@@ -90,7 +90,8 @@ function GroupItemManager() {
     } finally { setSaving(false); }
   }
 
-  if (!inventory.email || !inventory.groupId) return <p>위에서 로그인하고 물품 그룹을 선택해 주세요.</p>;
+  if (!inventory.ready) return <p>물품 목록을 준비하고 있어요.</p>;
+  if (!inventory.groupId) return <p>물품 그룹을 만들어 주세요.</p>;
   if (inventory.loading) return <p>그룹 물품을 불러오고 있어요.</p>;
 
   return (
@@ -114,7 +115,7 @@ function GroupItemManager() {
             className="input"
             value={name}
             maxLength={NAME_MAX_LENGTH}
-            placeholder="예: 우산"
+            placeholder="계산기, 가위, 마우스"
             autoComplete="off"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "item-error" : undefined}

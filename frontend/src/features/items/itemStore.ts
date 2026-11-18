@@ -1,7 +1,6 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { modelLabel } from "../return/modelLabels";
 
@@ -12,7 +11,6 @@ type Inventory = {
   items: Item[];
   groups: Group[];
   groupId: string;
-  email: string;
   ready: boolean;
   loading: boolean;
   error: string;
@@ -21,7 +19,7 @@ export const NAME_MAX_LENGTH = 30;
 export const QUANTITY_MIN = 1;
 export const QUANTITY_MAX = 999;
 const names: Record<string, string> = { calculator: "계산기", scissors: "가위", mouse: "마우스" };
-const initial: Inventory = { items: [], groups: [], groupId: "", email: "", ready: false, loading: false, error: "" };
+const initial: Inventory = { items: [], groups: [], groupId: "", ready: false, loading: false, error: "" };
 let state = initial;
 let revision = 0;
 const listeners = new Set<() => void>();
@@ -41,7 +39,7 @@ export function useItems(): Item[] {
 }
 
 async function readItems(groupId: string) {
-  const { data, error } = await supabase().from("item_group_items")
+  const { data, error } = await supabase().from("shared_item_group_items")
     .select("label_code,expected_quantity").eq("group_id", groupId).order("label_code");
   if (error) throw error;
   return (data ?? []).map((row) => ({
@@ -62,14 +60,13 @@ export async function selectGroup(groupId: string) {
   }
 }
 
-export async function loadInventory(user: User | null) {
+export async function loadInventory() {
   const current = ++revision;
-  publish({ ...initial, ready: true, email: user?.email ?? "", loading: !!user });
-  if (!user) return;
-  const { data, error } = await supabase().from("item_groups").select("id,name").order("created_at");
+  publish({ ...initial, ready: true, loading: true });
+  const { data, error } = await supabase().from("shared_item_groups").select("id,name").order("created_at");
   if (current !== revision) return;
   if (error) {
-    publish({ error: "물품 그룹 조회에 실패했어요. 다시 로그인해 주세요.", loading: false });
+    publish({ error: "공유 목록에 연결하지 못했어요. DB에 공유 목록 SQL이 적용됐는지 확인해 주세요.", loading: false });
     return;
   }
   const groups = (data ?? []) as Group[];
@@ -79,8 +76,8 @@ export async function loadInventory(user: User | null) {
 
 export async function createGroup(name: string) {
   const current = revision;
-  if (!name.trim()) throw new Error("그룹 이름을 입력해 주세요.");
-  const { data, error } = await supabase().from("item_groups")
+  if (!name.trim() || name.trim().length > 100) throw new Error("그룹 이름을 입력해 주세요.");
+  const { data, error } = await supabase().from("shared_item_groups")
     .insert({ name: name.trim() }).select("id,name").single();
   if (error || !data) throw new Error("그룹 생성에 실패했어요.");
   if (current !== revision) return;
@@ -107,11 +104,11 @@ async function saveItem(input: ItemInput, editingId: string | null) {
   if (problem) throw new Error(problem);
   const code = modelLabel(input.name)!;
   const row = { label_code: code, expected_quantity: input.quantity };
-  const table = supabase().from("item_group_items");
+  const table = supabase().from("shared_item_group_items");
   const { data, error } = editingId
     ? await table.update(row).eq("group_id", groupId).eq("label_code", editingId).select("label_code")
     : await table.insert({ ...row, group_id: groupId }).select("label_code");
-  if (error || !data?.length) throw new Error("저장하지 못했어요. 로그인과 그룹을 확인해 주세요.");
+  if (error || !data?.length) throw new Error("저장하지 못했어요. 연결 상태와 그룹을 확인해 주세요.");
   if (state.groupId === groupId) await selectGroup(groupId);
 }
 export async function addItem(input: ItemInput) {
@@ -126,7 +123,7 @@ export async function resetToSample() {
   const rows = Object.keys(names).map((code) => ({
     group_id: groupId, label_code: code, expected_quantity: 1,
   }));
-  const { error } = await supabase().from("item_group_items").upsert(rows, { onConflict: "group_id,label_code" });
+  const { error } = await supabase().from("shared_item_group_items").upsert(rows, { onConflict: "group_id,label_code" });
   if (error) throw new Error("기본 물품 저장에 실패했어요.");
   if (state.groupId === groupId) await selectGroup(groupId);
 }

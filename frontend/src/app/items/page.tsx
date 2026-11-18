@@ -12,7 +12,7 @@ export default function ItemsPage() {
       <header className={styles.head}>
         <h1>물품 관리</h1>
         <p className="hint">
-          선택한 그룹의 물품을 Supabase에 저장합니다.
+          계산기·가위·마우스의 수량을 관리하세요. 변경하면 모두의 목록에 반영돼요.
         </p>
       </header>
       <ItemManager />
