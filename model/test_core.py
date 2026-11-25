@@ -12,7 +12,7 @@ from PIL import Image
 
 from scene_metrics import evaluate, rate
 from train_head import CLASSES, read_manifest
-from infer_scene import clean_candidates, decide
+from infer_scene import clean_candidates, decide, suppress_instance_duplicates
 
 
 class DataChecks(unittest.TestCase):
@@ -43,6 +43,44 @@ class DataChecks(unittest.TestCase):
 
 
 class CandidateChecks(unittest.TestCase):
+    def test_whole_candidate_survives_part_with_moderate_mask_overlap(self):
+        whole = np.zeros((10, 10), dtype=bool)
+        whole[1:9, 1:9] = True
+        part = whole.copy()
+        part[1:3] = False
+        proposals = [
+            {"segmentation": part, "predicted_iou": .99, "stability_score": .99},
+            {"segmentation": whole, "predicted_iou": .4, "stability_score": .85},
+        ]
+        config = {"min_area_ratio": .001, "max_area_ratio": .8,
+                  "mask_iou_suppress": .95, "max_candidates": 128}
+        self.assertEqual(len(clean_candidates(proposals, whole.shape, config)[0]), 2)
+
+    def test_disjoint_parts_inside_one_object_box_are_not_double_counted(self):
+        records = [
+            {"candidate_id": 0, "label": "scissors", "accepted": True, "score": .99, "bbox_xyxy": [0, 0, 100, 100]},
+            {"candidate_id": 1, "label": "scissors", "accepted": True, "score": .8, "bbox_xyxy": [10, 10, 80, 30]},
+        ]
+        counts, status = decide(suppress_instance_duplicates(records), {"scissors": 1}, [])
+        self.assertEqual(counts, {"scissors": 1})
+        self.assertEqual(status, "complete")
+
+    def test_two_separate_instances_of_same_label_are_preserved(self):
+        records = [
+            {"candidate_id": i, "label": "scissors", "accepted": True, "score": .99, "bbox_xyxy": box}
+            for i, box in enumerate([[0, 0, 100, 100], [60, 60, 160, 160]])
+        ]
+        counts, _ = decide(suppress_instance_duplicates(records), {"scissors": 2}, [])
+        self.assertEqual(counts, {"scissors": 2})
+
+    def test_uncertain_different_object_inside_box_still_requests_review(self):
+        records = [
+            {"candidate_id": 0, "label": "mouse", "accepted": True, "score": .99, "bbox_xyxy": [0, 0, 100, 100]},
+            {"candidate_id": 1, "label": "scissors", "accepted": False, "score": .6, "bbox_xyxy": [10, 10, 30, 30]},
+        ]
+        _, status = decide(suppress_instance_duplicates(records), {"mouse": 1, "scissors": 1}, [])
+        self.assertEqual(status, "review")
+
     def test_small_part_does_not_suppress_whole_item(self):
         whole = np.zeros((10, 10), dtype=bool)
         whole[1:8, 1:8] = True
@@ -65,6 +103,11 @@ class CandidateChecks(unittest.TestCase):
 
 
 class DecisionChecks(unittest.TestCase):
+    def test_empty_segmentation_requires_review_instead_of_false_missing(self):
+        counts, status = decide([], dict.fromkeys(CLASSES[:3], 1), [])
+        self.assertEqual(counts, dict.fromkeys(CLASSES[:3], 0))
+        self.assertEqual(status, "review")
+
     def test_untrained_never_complete(self):
         counts, status = decide([], {"calculator": 1, "scissors": 1, "mouse": 1}, ["classifier_not_supplied"])
         self.assertEqual(status, "review")
@@ -118,6 +161,10 @@ class ClassifierExecution(unittest.TestCase):
                             "--model", str(base / "models/head.joblib"), "--outdir", str(base / "eval")],
                            check=True, capture_output=True)
             report = json.loads((base / "eval/crop_metrics.json").read_text())
+            selection = json.loads((base / "models/selection.json").read_text())
+            self.assertEqual(selection["selected_C"], 100.0)
+            self.assertLess(selection["selection"][-1]["val_log_loss"],
+                            selection["selection"][0]["val_log_loss"])
             self.assertEqual(report["n"], 12)
             self.assertEqual(report["accuracy"], 1)
             self.assertTrue((base / "eval/confusion_matrix.png").is_file())

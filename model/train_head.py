@@ -80,7 +80,7 @@ def fit(args):
     import joblib
     import numpy as np
     from sklearn.linear_model import LogisticRegression
-    from sklearn.metrics import accuracy_score, f1_score
+    from sklearn.metrics import accuracy_score, f1_score, log_loss
     from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import Normalizer
 
@@ -106,14 +106,20 @@ def fit(args):
         ))
         estimator.fit(X[train], y[train])
         prediction = estimator.predict(X[val])
+        probability = estimator.predict_proba(X[val])
         score = f1_score(y[val], prediction, labels=CLASSES, average="macro", zero_division=0)
+        loss = float(log_loss(y[val], probability, labels=estimator.classes_))
         record = {"C": C, "val_macro_f1": float(score),
-                  "val_accuracy": float(accuracy_score(y[val], prediction))}
+                  "val_accuracy": float(accuracy_score(y[val], prediction)),
+                  "val_log_loss": loss}
         scores.append(record)
         print(record)
-        # Ties keep the smaller C (stronger regularization).
-        if best is None or score > best[0]:
-            best = (score, estimator, C)
+        # Argmax accuracy alone selected C=.1 with scores below .37, so every
+        # correct crop failed the unchanged .7 inference threshold. For equal
+        # macro F1, compare held-out probability loss before regularization.
+        rank = (float(score), -loss, -C)
+        if best is None or rank > best[0]:
+            best = (rank, estimator, C)
     output = Path(args.outdir)
     output.mkdir(parents=True, exist_ok=True)
     joblib.dump({"estimator": best[1], "contract": json.loads(str(data["contract"])),

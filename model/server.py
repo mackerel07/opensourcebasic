@@ -3,6 +3,7 @@ import asyncio
 import base64
 import io
 import json
+import hashlib
 import os
 from pathlib import Path
 import secrets
@@ -45,7 +46,8 @@ async def authenticate(request, call_next):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "classifier_id": hashlib.sha256(CLASSIFIER.read_bytes()).hexdigest()[:16],
+            "config_id": hashlib.sha256((ROOT / "inference_config.json").read_bytes()).hexdigest()[:16]}
 
 
 def infer(image, expected):
