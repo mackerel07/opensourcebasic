@@ -49,12 +49,54 @@ def clean_candidates(proposals, shape, config):
     return kept, warnings
 
 
+def box_overlap_smaller(a, b):
+    intersection = max(0, min(a[2], b[2]) - max(a[0], b[0])) * max(
+        0, min(a[3], b[3]) - max(a[1], b[1]))
+    area_a = max(0, a[2] - a[0]) * max(0, a[3] - a[1])
+    area_b = max(0, b[2] - b[0]) * max(0, b[3] - b[1])
+    return intersection / min(area_a, area_b) if min(area_a, area_b) else 0.0
+
+
+def suppress_instance_duplicates(records, threshold=0.85):
+    """Remove nested same-class part boxes after classification, not raw SAM masks.
+
+    Thin scissors can have disjoint handle/blade masks inside the full-object
+    box. Mask IoU alone cannot deduplicate these. Separate instances with
+    distinct boxes remain, even if their class is identical.
+    """
+    kept = []
+    for record in sorted(records, key=lambda r: r.get("score", 0), reverse=True):
+        if not record["accepted"] or record["label"] == "other":
+            continue
+        parent = next((q for q in kept if q["label"] == record["label"] and
+                       box_overlap_smaller(q["bbox_xyxy"], record["bbox_xyxy"]) >= threshold), None)
+        if parent is not None:
+            record["accepted"] = False
+            record["suppressed_by"] = parent["candidate_id"]
+        else:
+            kept.append(record)
+    # A rejected key/button/handle wholly inside a counted item is a part,
+    # rather than an additional uncertain object in the scene.
+    for record in records:
+        if record["accepted"] or "suppressed_by" in record:
+            continue
+        a = record["bbox_xyxy"]
+        area = (a[2] - a[0]) * (a[3] - a[1])
+        for parent in kept:
+            b = parent["bbox_xyxy"]
+            if (record["label"] in {parent["label"], "other"} and
+                    area <= (b[2] - b[0]) * (b[3] - b[1]) and box_overlap_smaller(a, b) >= threshold):
+                record["suppressed_by"] = parent["candidate_id"]
+                break
+    return records
+
+
 def decide(records, expected, warnings):
     counts = {c: 0 for c in expected}
     for r in records:
         if r["accepted"] and r["label"] in counts:
             counts[r["label"]] += 1
-    if warnings or any(not r["accepted"] for r in records) or any(
+    if not records or warnings or any(not r["accepted"] and "suppressed_by" not in r for r in records) or any(
             counts[c] > expected[c] for c in counts):
         return counts, "review"
     return counts, "complete" if counts == expected else "missing"
@@ -112,6 +154,8 @@ def main():
     synchronize(device)
     masks_ready = time.perf_counter()
     proposals, warnings = clean_candidates(proposals, rgb.shape, config)
+    if not proposals:
+        warnings.append("no_object_candidates")
     crops, boxes = [], []
     for proposal in proposals:
         crop, box = masked_crop(rgb, proposal["segmentation"])
@@ -136,6 +180,7 @@ def main():
     if bundle is None:
         records = [{"candidate_id": i, "label": "untrained", "accepted": False,
                     "bbox_xyxy": boxes[i]} for i in range(len(crops))]
+    records = suppress_instance_duplicates(records, config.get("instance_box_overlap", 0.85))
     expected = config["expected"]
     if set(expected) != set(CLASSES[:3]):
         raise ValueError("Expected inventory must specify calculator, scissors, mouse")
@@ -145,7 +190,7 @@ def main():
     result = {"scene_id": args.scene_id or Path(args.image).stem,
               "device": device, "status": status, "counts": counts, "expected": expected,
               "review_reasons": sorted(set(warnings + (["uncertain_candidates"] if any(
-                  not r["accepted"] for r in records) else []) + (["extra_target_count"] if any(
+                  not r["accepted"] and "suppressed_by" not in r for r in records) else []) + (["extra_target_count"] if any(
                       counts[c] > expected[c] for c in counts) else []))),
               "n_candidates": len(proposals), "original_size_hw": original_size,
               "processing_size_hw": list(rgb.shape[:2]), "latency_ms": latency_ms,

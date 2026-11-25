@@ -138,7 +138,7 @@ data/crops/
 - 분류기: scikit-learn LogisticRegression, `lbfgs`, 최대 2000회 반복
 - 정규화 강도 후보: `C = 0.1, 1, 10, 100`
 - 클래스 가중치: `balanced`
-- 선택 기준: 검증용 Macro F1, 동점이면 더 작은 C
+- 선택 기준: 검증용 Macro F1, 동점이면 검증 log loss가 작은 모델, 다시 동점이면 작은 C
 - 선택 후 검증 자료를 섞어 재학습하지 않음
 - 최종 test 자료는 설정 선택에 사용하지 않음
 
@@ -163,6 +163,8 @@ Accuracy는 맞힌 사진 수 / 전체 사진 수다. Precision은 해당 종류
 이 수치는 올바르게 잘라 넣은 이미지의 종류 분류 성능이다. 자동 마스크가 물품을 못 찾는 오류는 여기 포함되지 않는다.
 
 ## 8 자동 반납 확인 연결
+
+2026-11-25 후보 필터·분류기 선택·같은 물품 중복 집계 수정은 [RECOGNITION_FIX.md](RECOGNITION_FIX.md)에 기록했다.
 
 ```bash
 .venv/bin/python infer_scene.py --image data/scenes/scene01.jpg --classifier runs/model/head.joblib --outdir runs/scene01 --scene-id scene01 --predictions-csv runs/scenes_predictions.csv

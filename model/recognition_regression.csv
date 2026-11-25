@@ -1,0 +1,13 @@
+scene,true_calculator,true_scissors,true_mouse,pred_calculator,pred_scissors,pred_mouse,counts_match,status,cpu_inference_seconds
+return_01,1,1,1,1,1,1,True,review,6.59
+return_02,1,1,1,1,1,1,True,complete,6.93
+return_03,0,1,1,0,1,1,True,review,6.88
+return_04,1,0,1,1,0,1,True,missing,6.28
+return_05,1,1,0,1,1,0,True,review,8.06
+return_06,1,1,0,1,1,0,True,review,7.1
+return_07,0,1,1,0,1,1,True,review,6.8
+return_08,1,0,1,1,0,1,True,missing,6.74
+return_09,0,1,0,0,1,0,True,missing,6.94
+return_10,0,2,0,0,2,0,True,review,6.96
+return_11,0,0,1,0,0,1,True,review,6.75
+return_12,0,0,0,0,0,0,True,review,6.6
