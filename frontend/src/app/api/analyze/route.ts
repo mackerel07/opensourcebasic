@@ -31,10 +31,10 @@ export async function POST(request: Request) {
   if (typeof groupId !== "string" || !/^[0-9a-f-]{36}$/i.test(groupId)) {
     return Response.json({ error: "물품 그룹을 선택해 주세요." }, { status: 422 });
   }
-  let groupItems: { label_code: string; expected_quantity: number }[];
+  let groupItems: { label_code: string }[];
   try {
     const response = await fetch(
-      supabaseUrl + "/rest/v1/shared_item_group_items?select=label_code,expected_quantity&group_id=eq." + encodeURIComponent(groupId),
+      supabaseUrl + "/rest/v1/shared_item_group_items?select=label_code&group_id=eq." + encodeURIComponent(groupId),
       { headers: { apikey: publishableKey },
         signal: AbortSignal.timeout(10000), cache: "no-store" },
     );
@@ -55,12 +55,12 @@ export async function POST(request: Request) {
         throw new Error();
       }
       const stored = groupItems.find((row) => row.label_code === label);
-      if (!stored || item.requested > stored.expected_quantity) throw new Error();
+      if (!stored) throw new Error();
       seen.add(label);
       expected[label] = item.requested;
     }
   } catch {
-    return Response.json({ error: "선택한 그룹에 등록된 물품과 보유 수량을 확인해 주세요." }, { status: 422 });
+    return Response.json({ error: "선택한 그룹의 등록 품목과 반납 수량을 확인해 주세요." }, { status: 422 });
   }
   const upstream = new FormData();
   upstream.set("file", file);

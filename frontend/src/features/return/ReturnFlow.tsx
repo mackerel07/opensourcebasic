@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useItems, useInventory } from "@/features/items/itemStore";
+import { confirmReturn, ReturnSaveError, QUANTITY_MAX, useItems, useInventory } from "@/features/items/itemStore";
 import { decodePhoto, type Photo } from "./loadPhoto";
 import { PhotoFrame } from "./PhotoFrame";
 import { QuantityStepper } from "./QuantityStepper";
@@ -41,6 +41,10 @@ function GroupReturnFlow() {
   const requestRef = useRef<AbortController | null>(null);
   const [result, setResult] = useState<ModelResult | null>(null);
   const [confirmed, setConfirmed] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [pendingReturn, setPendingReturn] = useState<{ id: string; counts: Record<string, number> } | null>(null);
+  const savingRef = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const photoUrlRef = useRef<string | null>(null);
   /** 사진을 연달아 고를 때, 마지막으로 고른 사진의 확인 결과만 반영하기 위한 번호 */
@@ -139,7 +143,32 @@ function GroupReturnFlow() {
     }
   }
 
+  async function finishReturn() {
+    if (!result || savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveError("");
+    const submission = pendingReturn ?? {
+      id: crypto.randomUUID(),
+      counts: Object.fromEntries(result.rows.map((row) => [row.itemId, confirmed[row.itemId] ?? 0])),
+    };
+    setPendingReturn(submission);
+    try {
+      await confirmReturn(groupId, submission.counts, submission.id);
+      setPendingReturn(null);
+      setStep("done");
+    } catch (error) {
+      if (error instanceof ReturnSaveError && error.safeToEdit) setPendingReturn(null);
+      setSaveError(error instanceof Error ? error.message : "저장하지 못했어요. 다시 시도해 주세요.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
+
   function restart() {
+    setSaveError("");
+    setPendingReturn(null);
     photoLoadRef.current += 1;
     clearPhoto();
     setCheckingPhoto(false);
@@ -211,7 +240,7 @@ function GroupReturnFlow() {
                         label={`${item.name} 반납 수량`}
                         value={value}
                         min={1}
-                        max={item.quantity}
+                        max={QUANTITY_MAX}
                         onChange={(v) => setRequested(item.id, v)}
                       />
                     )}
@@ -383,6 +412,7 @@ function GroupReturnFlow() {
                     value={value}
                     min={0}
                     max={999}
+                    disabled={pendingReturn !== null}
                     onChange={(v) =>
                       setConfirmed((prev) => ({ ...prev, [row.itemId]: v }))
                     }
@@ -392,10 +422,13 @@ function GroupReturnFlow() {
             })}
           </ul>
 
+          <p className="hint">최종 확인하면 확인 수량만큼 공유 재고에 추가해요.</p>
+          {saveError && <p className="error" role="alert">{saveError}</p>}
           <div className={styles.actions}>
             <button
               type="button"
               className="btn"
+              disabled={pendingReturn !== null}
               onClick={() => setStep("photo")}
             >
               사진 다시 찍기
@@ -403,9 +436,10 @@ function GroupReturnFlow() {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => setStep("done")}
+              disabled={saving}
+              onClick={finishReturn}
             >
-              최종 확인
+              {saving ? "재고에 반영 중…" : pendingReturn ? "같은 요청으로 다시 저장" : "최종 확인 · 재고 반영"}
             </button>
           </div>
         </section>
@@ -428,7 +462,7 @@ function GroupReturnFlow() {
                 <li key={row.itemId}>
                   <span>
                     <strong>{row.name}</strong> 확인 {value}개 / 반납{" "}
-                    {row.requested}개
+                    {row.requested}개 · 현재 재고 {items.find((item) => item.id === row.itemId)?.quantity ?? "—"}개
                   </span>
                   <span
                     className={missing > 0 ? styles.badgeMissing : styles.badgeOk}
@@ -441,7 +475,7 @@ function GroupReturnFlow() {
           </ul>
 
           <p className="hint">
-            확인한 결과는 현재 화면에서만 유지됩니다.
+            확인 수량을 공유 재고에 반영했어요.
           </p>
 
           <div className={styles.actions}>
