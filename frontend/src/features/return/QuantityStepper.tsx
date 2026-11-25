@@ -7,11 +7,12 @@ type Props = {
   value: number;
   min: number;
   max: number;
+  disabled?: boolean;
   onChange: (value: number) => void;
 };
 
 /** − / + 버튼으로 수량을 바꾸는 작은 입력. */
-export function QuantityStepper({ label, value, min, max, onChange }: Props) {
+export function QuantityStepper({ label, value, min, max, disabled = false, onChange }: Props) {
   const clamp = (v: number) => Math.min(max, Math.max(min, v));
 
   return (
@@ -20,7 +21,7 @@ export function QuantityStepper({ label, value, min, max, onChange }: Props) {
         type="button"
         className="btn btn-small"
         aria-label={`${label} 1 줄이기`}
-        disabled={value <= min}
+        disabled={disabled || value <= min}
         onClick={() => onChange(clamp(value - 1))}
       >
         −
@@ -32,7 +33,7 @@ export function QuantityStepper({ label, value, min, max, onChange }: Props) {
         type="button"
         className="btn btn-small"
         aria-label={`${label} 1 늘리기`}
-        disabled={value >= max}
+        disabled={disabled || value >= max}
         onClick={() => onChange(clamp(value + 1))}
       >
         +

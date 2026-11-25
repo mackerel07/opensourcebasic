@@ -16,7 +16,7 @@ type Inventory = {
   error: string;
 };
 export const NAME_MAX_LENGTH = 30;
-export const QUANTITY_MIN = 1;
+export const QUANTITY_MIN = 0;
 export const QUANTITY_MAX = 999;
 const names: Record<string, string> = { calculator: "계산기", scissors: "가위", mouse: "마우스" };
 const initial: Inventory = { items: [], groups: [], groupId: "", ready: false, loading: false, error: "" };
@@ -88,8 +88,8 @@ export async function createGroup(name: string) {
 export function validateItem(input: ItemInput, items: Item[], editingId: string | null) {
   const code = modelLabel(input.name);
   if (!code) return "물품 이름은 계산기, 가위, 마우스 중에서 입력해 주세요.";
-  if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 999) {
-    return "수량은 1~999 사이 정수로 입력해 주세요.";
+  if (!Number.isInteger(input.quantity) || input.quantity < 0 || input.quantity > 999) {
+    return "수량은 0~999 사이 정수로 입력해 주세요.";
   }
   if (items.some((item) => item.id !== editingId && item.id === code)) {
     return "같은 종류의 물품이 이미 있어요.";
@@ -126,4 +126,29 @@ export async function resetToSample() {
   const { error } = await supabase().from("shared_item_group_items").upsert(rows, { onConflict: "group_id,label_code" });
   if (error) throw new Error("기본 물품 저장에 실패했어요.");
   if (state.groupId === groupId) await selectGroup(groupId);
+}
+
+
+export class ReturnSaveError extends Error {
+  constructor(message: string, public readonly safeToEdit = false) { super(message); }
+}
+
+// DB 함수가 여러 품목 증가와 요청 ID 기록을 한 트랜잭션으로 처리한다.
+export async function confirmReturn(groupId: string, counts: Record<string, number>, requestId: string) {
+  const { data, error } = await supabase().rpc("confirm_shared_return", {
+    p_request_id: requestId, p_group_id: groupId, p_counts: counts,
+  }).abortSignal(AbortSignal.timeout(20000));
+  if (error) {
+    if (error.code === "PGRST202") throw new ReturnSaveError("반납 저장용 DB 설정이 아직 적용되지 않았어요.", true);
+    if (["22023", "23503", "23514"].includes(error.code)) throw new ReturnSaveError(error.message, true);
+    throw new ReturnSaveError("저장 응답을 확인하지 못했어요. 수량을 바꾸지 않고 다시 저장해 주세요.");
+  }
+  const rows = data?.items as { label_code: string; expected_quantity: number }[] | undefined;
+  if (!Array.isArray(rows) || !rows.every((row) => names[row.label_code] && Number.isInteger(row.expected_quantity) && row.expected_quantity >= 0 && row.expected_quantity <= 999)) {
+    throw new ReturnSaveError("저장 결과를 확인하지 못했어요. 다시 저장해 주세요.");
+  }
+  // loading 상태를 바꾸면 반납 화면이 사라지므로 반환된 최신 재고만 교체한다.
+  if (state.groupId === groupId) publish({ items: rows.map((row) => ({
+    id: row.label_code, name: names[row.label_code], quantity: row.expected_quantity,
+  })) });
 }
